@@ -1,0 +1,99 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so it may be best to ignore them.
+#  See: https://github.com/pyinstaller/pyinstaller/wiki/Abstract-ing-PyInstaller-Code
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.pyo
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Node dependencies & web builds
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+dist/
+build/
+.next/
+.out/
+
+# Environments & IDEs
+.env
+.env.local
+.env.*.local
+*.env
+.venv
+venv/
+ENV/
+env/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Database & local outputs
+*.sqlite
+*.sqlite3
+*.db
+outputs/
+
+# Large Datasets & External Cloned Repositories (MUST REMAIN OUTSIDE GIT TRACKING)
+SubPipeMiniSSS/
+AI4Shipwrecks/
+drishti-sss/
+sidescantools/
+*.pptx
+*.pptx.pptx
+
+# Model Checkpoints & Weights
+ai/weights/
+*.pt
+*.onnx
+*.engine
+*.tflite

@@ -28,6 +28,10 @@
 
 **AquaSentinel AI** is an offline-capable, AI-powered Side-Scan Sonar (SSS) analysis system designed to automatically detect, verify, classify, and geotag underwater marine debris and structural anomalies.
 
+> [!IMPORTANT]
+> **Single Source of Truth Document**: For complete architectural specifications, dataset audit findings, data schemas, API definitions, acoustic shadow physics math, and implementation roadmaps, consult [PROJECT_SPECIFICATION.md](file:///d:/Projects/AquaSentinel/PROJECT_SPECIFICATION.md).
+
+
 Sonar surveys generate massive acoustic waterfall records that are slow and difficult to inspect manually. Natural seafloor formations (rocks, coral outcrops, sand ridges) often resemble artificial debris, leading to high false-positive rates. AquaSentinel AI addresses this challenge by fusing raw acoustic imagery with navigation telemetry and acoustic physics:
 
 * **Side-Scan Sonar (SSS) Imagery:** Dual-channel acoustic backscatter recordings.
