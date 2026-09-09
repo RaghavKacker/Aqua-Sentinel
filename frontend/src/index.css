@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #030a16;
+    color: #e2e8f0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+}
+
+/* Custom oceanographic scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #07152b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1b528f;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2570be;
+}
+
+.sonar-grid-bg {
+  background-image: radial-gradient(rgba(0, 240, 255, 0.08) 1px, transparent 0);
+  background-size: 24px 24px;
+}

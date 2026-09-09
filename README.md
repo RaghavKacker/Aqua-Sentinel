@@ -105,24 +105,23 @@ Detection results are integrated with navigation metadata to calculate:
 
 ```mermaid
 flowchart LR
-    A["Raw Inputs<br/>(Sonar + Nav + Logs)"] --> B["Input Normalizer"]
-    B --> C["Sonar Preprocessing"]
-    C --> D["AI Processing Engine"]
-    D --> E{"Acoustic Shadow<br/>Verification"}
-    E -->|Valid Shadow| F["Spatial & Geolocation"]
-    E -->|No Shadow| X["Discard / Filter"]
-    F --> G["Risk & Confidence Scoring"]
-    G --> H["Geotagged Results<br/>(JSON / CSV / Reports)"]
+    A["Raw Inputs<br/>(Sonar + Nav + Logs)"] --> B["Input Normalizer<br/>(Graceful Degradation)"]
+    B --> C["Sonar Preprocessing<br/>(WCR, Slant-Range, CLAHE)"]
+    C --> D["Adaptive AI Inference<br/>(YOLO-Seg)"]
+    D --> E["Acoustic Shadow<br/>Evidence Rater"]
+    E -->|Evidence + Confidence| F["Metadata-Aware<br/>Geolocation"]
+    F --> G["Risk & Priority<br/>Scoring"]
+    G --> H["Actionable Outputs<br/>(Dashboard, GeoJSON, CSV)"]
 ```
 
 ### Pipeline Stages
-1. **Input Normalization:** Ingests and synchronizes sonar frames with navigation timestamps.
-2. **Sonar Preprocessing:** Excises water column, corrects slant-range geometry, and normalizes acoustic gains.
-3. **AI Processing:** Detects candidate anomalies and extracts spatial bounding masks.
-4. **Acoustic Verification:** Validates object height and presence via shadow geometry.
-5. **Spatial / Geolocation:** Translates image offsets into true WGS84 coordinates using towfish telemetry.
-6. **Risk & Confidence Scoring:** Assigns operational hazard ratings and confidence indices.
-7. **Actionable Outputs:** Exports telemetry for GIS layers, databases, and mission reports.
+1. **Input Normalization:** Ingests and synchronizes sonar frames with navigation timestamps; degrades gracefully if metadata is partial or absent.
+2. **Sonar Preprocessing:** Excises water column, applies Pythagorean slant-range correction, and normalizes acoustic gains (CLAHE/EGN).
+3. **Adaptive AI Inference:** Executes YOLO-Seg segmentation model scaled to device capabilities (GPU/CPU fallback).
+4. **Acoustic Shadow Verification:** Assesses expected shadow region to provide supporting, neutral, or review-flagged physical evidence without blanket rejection.
+5. **Metadata-Aware Geolocation:** Translates image offsets into true WGS84 coordinates or local metric odometry when telemetry is present.
+6. **Risk & Priority Scoring:** Computes urgency tier (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`) independently from visual detection confidence.
+7. **Actionable Outputs:** Exports telemetry for GIS layers, local SQLite database, and interactive React dashboard.
 
 ---
 
@@ -279,75 +278,141 @@ $$\text{Survey} \longrightarrow \text{AI Analysis} \longrightarrow \text{Verific
 
 ---
 
-## Proposed Repository Structure
+## Tech Stack
+* **AI/ML:** Python, PyTorch, Ultralytics YOLO-Seg
+* **Image Processing:** OpenCV, NumPy
+* **Backend:** FastAPI, Pydantic, Uvicorn
+* **Frontend:** React + Vite + TypeScript + Tailwind CSS
+* **Map Engine:** Leaflet (offline raster & canvas fallback)
+* **Database:** SQLite
+* **Geospatial Math:** PyProj / Shapely
+* **Deployment:** 100% Offline-First (Local Air-Gapped)
+
+---
+
+## Project Structure
 
 ```text
-AquaSentinel-AI/
-├── frontend/             # Dashboard UI and map visualization
-├── backend/              # Application server and API orchestration
-├── vision-engine/        # AI models and inference modules
-├── preprocessing/        # Slant-range correction and gain filters
-├── geospatial/           # Coordinate transformations and layback math
-├── models/               # Model weights and configurations
-├── datasets/             # Data loaders and annotation utilities
-├── configs/              # Sensor profiles and compute configurations
-├── scripts/              # Data processing and benchmarking utilities
-├── tests/                # Unit and integration test suites
-├── docs/                 # Documentation and architecture diagrams
-├── outputs/              # Exported reports, JSON telemetry, and maps
-├── README.md             # Project documentation
-└── LICENSE               # License file
+aquasentinel/
+├── backend/
+│   ├── main.py                     # FastAPI application & REST endpoints
+│   ├── input_normalizer.py         # Multi-source ingestion & graceful degradation
+│   ├── database.py                 # SQLite models and session management
+│   ├── pipeline/
+│   │   ├── preprocess.py           # Water-column blanking, CLAHE, TVG
+│   │   ├── slant_range.py          # Pythagorean ground-range correction
+│   │   ├── tiling.py               # 640x640 overlapping sliding-window tiler
+│   │   ├── inference.py            # Adaptive YOLO-Seg inference (GPU/CPU fallback)
+│   │   ├── shadow_gate.py          # Non-rejecting acoustic shadow evidence rater
+│   │   ├── geolocation.py          # WGS84 great-circle & local odometry math
+│   │   └── quality.py              # Sonar SNR & image quality metrics
+│   └── reports.py                  # GeoJSON, CSV, and summary report generator
+│
+├── ml/
+│   ├── prepare_dataset.py          # GhostVision + SSS-Mine conversion to YOLO-Seg
+│   ├── train.py                    # Ultralytics YOLO-Seg Colab training script
+│   └── evaluate.py                 # Benchmarking (Precision, Recall, mAP50-95)
+│
+├── frontend/                       # React + Vite + TypeScript + Tailwind UI
+├── data/                           # Local sample strips & test datasets
+└── models/                         # Local exported weights (best.pt)
 ```
-*(Proposed structure; folders will be populated during development.)*
 
 ---
 
-## Installation and Setup
+## Incremental Development Strategy
 
-> [!NOTE]
-> **Implementation status:** Setup and installation instructions will be added once the technology stack and repository structure are finalized.
+* **V0.1:** Image $\rightarrow$ YOLO-Seg $\rightarrow$ Detection
+* **V0.2:** Image $\rightarrow$ Preprocessing $\rightarrow$ YOLO-Seg $\rightarrow$ Detection
+* **V0.3:** Multiple Inputs $\rightarrow$ Input Normalizer $\rightarrow$ YOLO-Seg
+* **V0.4:** Input $\rightarrow$ Adaptive Compute $\rightarrow$ YOLO-Seg
+* **V0.5:** YOLO-Seg $\rightarrow$ Acoustic Shadow Verification
+* **V1.0:** Full end-to-end system (UI + Database + Reports)
 
+---
+
+## Installation & Running Guidelines
+
+### 1. Prerequisites
+* **Python:** 3.12 or 3.13
+* **Node.js:** v18+ (v20+ recommended) and npm
+* **Hardware:** Works completely offline on standard laptops (supports NVIDIA CUDA GPU or AMD/Intel CPU fallback)
+
+---
+
+### 2. Quick Start: Local Offline Application
+
+#### Step 1: Clone Repository & Set Up Virtual Environment
 ```bash
-# Clone repository
-git clone <repository-url>
+# Clone the repository
+git clone https://github.com/RaghavKacker/Aqua-Sentinel.git
+cd Aqua-Sentinel
 
-# Enter project directory
-cd AquaSentinel-AI
+# Create and activate Python virtual environment
+python -m venv venv
 
-# Install dependencies
-<installation-command>
+# Windows (PowerShell):
+.\venv\Scripts\Activate.ps1
+# Linux / macOS:
+# source venv/bin/activate
 
-# Start application
-<run-command>
+# Install backend dependencies
+pip install -r backend/requirements.txt
 ```
 
+#### Step 2: Configure Environment
+Copy the environment template if not already present:
+```bash
+# Windows:
+copy .env.example .env
+# Linux / macOS:
+# cp .env.example .env
+```
+
+#### Step 3: Launch FastAPI Backend Server
+```bash
+python -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
+```
+* Backend API runs at: `http://localhost:8000`
+* Interactive OpenAPI Swagger docs: `http://localhost:8000/docs`
+
+#### Step 4: Launch React Hydrographic Dashboard
+Open a second terminal window:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+* Operations Dashboard runs at: `http://localhost:5173`
+
 ---
 
-## Proposed Usage Flow
+### 3. Google Colab GPU Training Workflow
 
-1. **Import Sonar Data:** Load raw side-scan sonar recordings or images.
-2. **Import Navigation Metadata:** Load synchronous GPS, AUV, or towfish logs.
-3. **Select Compute Profile:** Choose between `Workstation`, `Laptop`, or `Edge/AUV`.
-4. **Run Preprocessing:** Execute water-column removal, slant-range correction, and gain balancing.
-5. **Run AI Detection:** Identify candidate debris and anomaly regions.
-6. **Perform Acoustic Verification:** Verify physical presence via shadow geometry.
-7. **Generate Geotagged Results:** Project verified targets into geographic coordinates.
-8. **Export Data:** Output JSON/CSV telemetry, spatial layers, and mission reports.
+To train the **YOLO-Seg** model on free cloud GPUs without consuming local laptop resources:
+
+1. Follow the comprehensive guide: **[COLAB_TRAINING_WORKFLOW.md](file:///d:/Projects/AquaSentinel/COLAB_TRAINING_WORKFLOW.md)**.
+2. Open the ready-to-run Jupyter notebook:
+   * **[notebooks/AquaSentinel_YOLO_Seg_Colab_Training.ipynb](file:///d:/Projects/AquaSentinel/notebooks/AquaSentinel_YOLO_Seg_Colab_Training.ipynb)**
+3. Run the notebook in Colab using a **T4 GPU** runtime.
+4. Download the trained weights `best.pt` and place them at:
+   ```text
+   Aqua-Sentinel/models/best.pt
+   ```
+5. The local backend automatically detects `models/best.pt` for offline inference.
 
 ---
 
-## Project Status
-
-- [ ] Dataset preparation
-- [ ] Sonar preprocessing pipeline
-- [ ] AI detection model
-- [ ] Acoustic verification
-- [ ] Geolocation module
-- [ ] Risk scoring
-- [ ] Backend API
-- [ ] Dashboard
-- [ ] Edge deployment
-- [ ] Field validation
+### 4. Running Verification Tests
+Execute the complete unit and integration test suite:
+```bash
+.\venv\Scripts\pytest tests/ -v
+```
+All tests validate:
+* Input Normalizer graceful degradation (`FULL`, `PARTIAL`, `NONE`)
+* Non-rejecting acoustic shadow evidence rater
+* WGS84 and local metric odometry geolocation math
+* End-to-end API pipeline and GeoJSON/CSV exports
 
 ---
 

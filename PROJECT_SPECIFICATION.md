@@ -19,7 +19,8 @@
 | :--- | :--- | :--- | :--- | :--- |
 | **0.1.0-DRAFT** | 2026-09-08 | Architecture Team | Initial extraction from SIH26057 presentation and README. | Superseded |
 | **1.0.0-PROTOTYPE-SPEC** | 2026-09-09 | Multi-Disciplinary Team | Comprehensive architectural baseline and preliminary specs. | Superseded |
-| **1.1.0-AUDITED-BASELINE** | 2026-09-09 | Lead Systems Architect | Comprehensive workspace audit, empirical dataset measurements (SubPipeMiniSSS, drishti-sss, AI4Shipwrecks), developer hardware constraints (Ryzen 7 HS, RTX 3050 4GB, 16GB RAM), SidescanTools evaluation, memory-aware AI strategy, and full Mermaid diagram suite. | **Active / Approved SSOT** |
+| **1.1.0-AUDITED-BASELINE** | 2026-09-09 | Lead Systems Architect | Comprehensive workspace audit, empirical dataset measurements (SubPipeMiniSSS, drishti-sss, AI4Shipwrecks), developer hardware constraints (Ryzen 7 HS, RTX 3050 4GB, 16GB RAM), SidescanTools evaluation, memory-aware AI strategy, and full Mermaid diagram suite. | Superseded |
+| **1.2.0-YOLOSEG-ALIGNED** | 2026-09-09 | Multi-Disciplinary Team | Aligned with prototype prompt: Ultralytics YOLO-Seg instance segmentation, GhostVision (ghost gear) + SSS-Mine/NOMBO (AUV targets/background) training strategy, Google Colab GPU training workflow, non-rejecting acoustic shadow evidence rater, graceful metadata degradation ladder, clean repository layout, and incremental roadmap (V0.1 - V1.0). | **Active / Approved SSOT** |
 
 ### 1.2 Document Purpose
 This master specification is the **SINGLE SOURCE OF TRUTH (SSOT)** for AquaSentinel AI. Every software engineer, ML researcher, hydrographic consultant, AI coding agent, and hackathon evaluator must treat this document as the definitive system baseline.
@@ -362,50 +363,36 @@ A comprehensive physical inspection of all external folders placed in the worksp
 ## 11. Dataset Matrix & Evidence-Based AI Strategy
 
 ### 11.1 Empirical Dataset Matrix
-| Dataset Name | Sensor Type | Modality | Raw Strips | Pre-Tiled | Label Format | Active Classes | Nav Logs | Coordinates | Disk Size |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **drishti-sss** | Multi-source SSS | Dual Swath | No | Yes ($640 \times 500$) | YOLO txt | Pipeline, Wreck, Ghost Net, Mine | No | None | 3.79 GB |
-| **SubPipeMiniSSS** | Klein3500 (455/900kHz) | Dual Freq SSS | Yes ($5000 \times 500$) | No | COCO & YOLO | Pipeline | **Yes (10 CSVs)** | Local $(x, y, z)$ | 14.53 GB |
-| **AI4Shipwrecks** | EdgeTech 2205 AUV | Dual Freq SSS | Yes ($1728 \times N$) | No | Binary PNG Mask | Shipwreck, Terrain Negatives | No | None | 1.13 GB |
+| Dataset Name | Role / Purpose | Modality | Annotations | Active Classes | Nav Logs | Coordinates | Primary Environment |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **GhostVision** | **Primary Prototype Training** | SSS Tiles / Swaths | Polygon / Seg | Crab pots, ghost gear | No | None | **Google Colab GPU** |
+| **SSS-Mine / NOMBO** | **Target & Hard Background FP** | Real AUV SSS | Polygons / Boxes | Mine-like targets, clutter | Yes (Mission) | Lat/Lon | **Google Colab GPU** |
+| **SubPipeMiniSSS** | **E2E Pipeline / Telemetry** | Dual Freq SSS (Klein3500) | COCO & YOLO | Pipeline | **Yes (10 CSVs)** | Local $(x, y, z)$ | Local Workstation |
+| **AI4Shipwrecks** | **Hard Negative FP Benchmark** | Dual Freq AUV (EdgeTech) | Binary PNG Masks | Shipwreck, 25 Terrain BG | No | None | Local Workstation |
+| **drishti-sss** | **Pre-tiled baseline archive** | Multi-source SSS | YOLO Boxes | 4 classes (synthetic net) | No | None | Local Benchmark |
 
-### 11.2 Evidence-Based AI Strategy
-1. **Initial Model Training & Baseline:** Use `drishti-sss` train split (3,875 images). It is pre-tiled to $640 \times 500$, already filtered, and contains 4 debris classes plus 500 hard-negative background tiles.
-2. **Validation Split:** Use `drishti-sss` val split (630 images) for epoch checkpointing and mAP@0.5 calculation.
-3. **Hard False-Positive Testing:** Run inference across all 25 `AI4Shipwrecks/extras/terrain` swaths. Zero detections should occur; any detection is an acoustic false positive.
-4. **End-to-End System Test:** Use `SubPipeMiniSSS` SSS HF strips and `EstimatedState.csv` to validate the full pipeline: waterfall slicing $\rightarrow$ detection $\rightarrow$ acoustic shadow verification $\rightarrow$ local odometry geolocation $\rightarrow$ risk scoring $\rightarrow$ report generation.
-5. **No Blind Dataset Merging:** Datasets **shall not be merged into a single training bucket**. `SubPipeMiniSSS` contains raw un-equalized PBM strips at 900 kHz, while `drishti-sss` has pre-applied CLAHE and mixed frequencies. Combining them without careful cross-calibration causes severe domain shift. Keep training splits isolated and evaluate domain transfer explicitly.
+> [!IMPORTANT]
+> **Dataset Anti-Hallucination Rules**:
+> 1. **SSS-Mine / NOMBO is an AUV mine/target dataset**, used for difficult targets, acoustic shadows, and false-positive background suppression. Do **NOT** claim SSS-Mine is a ghost net dataset.
+> 2. **GhostVision is the primary dataset** for ghost fishing gear and crab-pot-type objects.
+> 3. Avoid random image splitting. **Split by survey/mission/source** so test data represents unseen scenes and prevents data leakage.
 
-### 11.3 Dataset Ingestion & Preprocessing Pipeline
-
-```mermaid
-flowchart TD
-    subgraph S1_Sources ["Raw External Datasets"]
-        D1["drishti-sss<br/>(5,205 Pre-Tiled Images)"]
-        D2["SubPipeMiniSSS<br/>(Raw PBM Waterfall Strips)"]
-        D3["AI4Shipwrecks<br/>(1,728px Wide Swaths)"]
-    end
-
-    subgraph S2_Ingestion ["Dataset Ingestion Engine"]
-        LOAD_D1["drishti.yaml DataLoader<br/>(Direct YOLO Ingestion)"]
-        SLICER["SubPipe Tiling Slicer<br/>(5000x500 -> 640x500 Windows)"]
-        MASK_CONV["AI4Shipwrecks Mask Slicer<br/>(Binary Mask -> Bounding Boxes)"]
-    end
-
-    subgraph S3_Sync ["Telemetry Synchronization"]
-        TELEMETRY["EstimatedState.csv & Altitude.csv<br/>Timestamp Interpolation"]
-    end
-
-    subgraph S4_Splits ["Curated Artifacts"]
-        TRAIN_SET["Training Pool (drishti train)"]
-        VAL_SET["Validation Pool (drishti val)"]
-        TEST_E2E["E2E Testbed (SubPipe SSS + Telemetry)"]
-        BENCH_FP["Terrain Benchmark (AI4Shipwrecks Terrain)"]
-    end
-
-    D1 --> LOAD_D1 --> TRAIN_SET & VAL_SET
-    D2 --> SLICER --> TEST_E2E
-    D2 --> TELEMETRY --> TEST_E2E
-    D3 --> MASK_CONV --> BENCH_FP
+### 11.2 Training & Prototype Workflow (Google Colab GPU)
+Model training is decoupled from local developer hardware limits:
+```text
+GhostVision + SSS-Mine
+        ↓
+ml/prepare_dataset.py (Polygon normalization & survey-based splitting)
+        ↓
+Unified YOLO-Seg Dataset (dataset.yaml)
+        ↓
+Google Colab GPU Training (ml/train.py, yolo11n-seg.pt)
+        ↓
+Validation & Unseen Mission Test Set Evaluation (ml/evaluate.py)
+        ↓
+Export best.pt to local `models/best.pt`
+        ↓
+Local Offline Application (FastAPI + React Dashboard)
 ```
 
 ---
@@ -425,39 +412,46 @@ The external datasets total **$\approx 19.5\text{ GB}$** on disk. Committing mul
 While the folders currently reside inside the root directory for development convenience, the recommended long-term organization decouples the application code from heavy assets:
 
 ```text
-AquaSentinel-Workspace/
-├── AquaSentinel/                     # Source code repository (Git tracked)
-│   ├── backend/
-│   ├── frontend/
-│   ├── ai/
-│   ├── configs/
-│   ├── docs/
-│   ├── scripts/
-│   ├── tests/
-│   ├── .env
-│   ├── README.md
-│   └── PROJECT_SPECIFICATION.md
+aquasentinel/
+├── backend/
+│   ├── main.py                     # FastAPI application & REST endpoints
+│   ├── input_normalizer.py         # Multi-source ingestion & graceful degradation
+│   ├── database.py                 # SQLite models and session management
+│   ├── pipeline/
+│   │   ├── preprocess.py           # Water-column blanking, CLAHE, TVG
+│   │   ├── slant_range.py          # Pythagorean ground-range correction
+│   │   ├── tiling.py               # 640x640 overlapping sliding-window tiler
+│   │   ├── inference.py            # Adaptive YOLO-Seg inference (GPU/CPU fallback)
+│   │   ├── shadow_gate.py          # Non-rejecting acoustic shadow evidence rater
+│   │   ├── geolocation.py          # WGS84 great-circle & local odometry math
+│   │   └── quality.py              # Sonar SNR & image quality metrics
+│   └── reports.py                  # GeoJSON, CSV, and summary report generator
 │
-└── external_data/                    # Heavy datasets (Excluded from Git)
-    ├── SubPipeMiniSSS/               # 14.53 GB
-    ├── drishti-sss/                  # 3.79 GB
-    ├── AI4Shipwrecks/                # 1.13 GB
-    └── sidescantools/                # Cloned external repository
+├── ml/
+│   ├── prepare_dataset.py          # GhostVision + SSS-Mine conversion to YOLO-Seg
+│   ├── train.py                    # Ultralytics YOLO-Seg Colab training script
+│   └── evaluate.py                 # Benchmarking (Precision, Recall, mAP50-95)
+│
+├── frontend/                       # React + Vite + TypeScript + Tailwind UI
+├── data/                           # Local sample strips & test datasets
+└── models/                         # Local exported weights (best.pt)
 ```
-
-*(Moving datasets outside the repository is documented as a recommended cleanup step. However, agents and developers shall NOT move, delete, or modify existing dataset directories without explicit user approval. All source code shall access dataset paths through configurable environment variables).*
 
 ### 12.3 Environment Variable Paths (`.env`)
 ```bash
-# External Dataset Root Paths
+# Primary ML Datasets
+GHOSTVISION_DATA_PATH=./data/GhostVision
+SSSMINE_DATA_PATH=./data/SSS-Mine
+
+# Local Benchmark / Telemetry Datasets
 DRISHTI_DATA_PATH=d:/Projects/AquaSentinel/drishti-sss
 SUBPIPE_DATA_PATH=d:/Projects/AquaSentinel/SubPipeMiniSSS
 AI4SHIPWRECKS_DATA_PATH=d:/Projects/AquaSentinel/AI4Shipwrecks
 SIDESCANTOOLS_PATH=d:/Projects/AquaSentinel/sidescantools
 
-# Application Storage
+# Application Storage & Models
 OUTPUT_STORAGE_PATH=./outputs
-MODEL_WEIGHTS_PATH=./ai/weights/aquasentinel_best.pt
+MODEL_WEIGHTS_PATH=./models/best.pt
 SQLITE_DB_PATH=./outputs/aquasentinel.db
 ```
 
@@ -575,42 +569,35 @@ flowchart LR
 
 ## 17. Acoustic Verification Engine
 
-Acoustic verification is the primary defense against seafloor false positives. Flat seabed features (rocks, reefs) reflect high energy but cast no acoustic shadow. Genuine 3D elevated objects block sound waves, casting a distinct shadow down-range.
+Acoustic verification inspects the expected acoustic shadow region down-range from candidate targets along the acoustic beam propagation direction. Target geometry and seabed conditions affect shadow visibility; therefore, **detections are never automatically discarded solely due to absent shadows**.
 
 ```mermaid
 flowchart TD
-    DET["Candidate Detection Bounding Box<br/>(Xmin, Ymin, Xmax, Ymax)"] --> GEOM["Determine Cross-Track Direction<br/>(Port vs Starboard relative to Nadir)"]
-    GEOM --> CROP["Extract Shadow Region Crop<br/>(Extend Down-Range away from Track)"]
+    DET["Candidate Detection (YOLO-Seg)<br/>Polygon Mask & Box"] --> GEOM["Determine Cross-Track Direction<br/>(Port vs Starboard relative to Nadir)"]
+    GEOM --> CROP["Extract Expected Shadow Region Crop<br/>(Extend Down-Range away from Track)"]
     CROP --> CONTRAST["1. Shadow Contrast Analysis<br/>C = 1.0 - (I_shadow / I_seabed)"]
     CROP --> LENGTH["2. Shadow Length Measurement<br/>(Detect low-intensity boundary)"]
     CROP --> RELIEF["3. Acoustic Relief Height Math<br/>h = (H * L_shadow) / R_slant"]
-    CONTRAST & LENGTH & RELIEF --> SCORE["Composite Verification Score<br/>S_acoustic in [0.0, 1.0]"]
-    SCORE --> DECIDE{"S_acoustic >= 0.50?"}
-    DECIDE -->|Yes| PASS["Status: VERIFIED (Genuine 3D Object)"]
-    DECIDE -->|No| FAIL["Status: UNVERIFIED_SUSPECT (Flat Artifact)"]
+    CONTRAST & LENGTH & RELIEF --> EVAL{"Shadow Evidence State"}
+    EVAL -->|Shadow Present & Distinct| PASS["Evidence: SUPPORTING<br/>Boost Confidence, h calculated<br/>Status: VERIFIED"]
+    EVAL -->|Shadow Indeterminate / Clutter| UNCLEAR["Evidence: NEUTRAL<br/>Confidence Unchanged<br/>Status: UNVERIFIED"]
+    EVAL -->|Expected Shadow Absent| ABSENT["Evidence: ABSENT<br/>Soft Confidence Penalty<br/>Status: FLAGGED_FOR_REVIEW"]
 ```
 
 ### 17.1 Physical Relief Height Formula
 If sensor altitude is $H$, target slant range is $R_{\text{slant}}$, and shadow length is $L_{\text{shadow}}$:
 $$h_{\text{relief}} = \frac{H \cdot L_{\text{shadow}}}{R_{\text{slant}}}$$
 
-### 17.2 MVP Prototype Heuristic Verification Score
-$$S_{\text{acoustic}} = w_1 \cdot C_{\text{contrast}} + w_2 \cdot D_{\text{relief}} + w_3 \cdot G_{\text{geometry}}$$
-- $C_{\text{contrast}} = 1.0 - \frac{\mu_{\text{shadow}}}{\mu_{\text{seabed}}}$ (expected near $1.0$).
-- $D_{\text{relief}} = \min\left(1.0, \frac{h_{\text{relief}}}{0.20\text{ m}}\right)$ (requires minimum $0.20\text{ m}$ height relief).
-- $G_{\text{geometry}} \in \{0.2, 1.0\}$ (confirms shadow extends radially away from nadir).
-- Default weights: $w_1 = 0.45, w_2 = 0.35, w_3 = 0.20$.
-
----
-
-## 18. Confidence Fusion & Target State Machine
-
-$$\text{Confidence}_{\text{final}} = W_{\text{AI}} \cdot \text{Score}_{\text{AI}} + W_{\text{shadow}} \cdot S_{\text{acoustic}}$$
-*(Default weights: $W_{\text{AI}} = 0.55, W_{\text{shadow}} = 0.45$)*
-
-- `VERIFIED`: $\text{Score}_{\text{AI}} \ge 0.40$ AND $S_{\text{acoustic}} \ge 0.50$ AND $\text{Confidence}_{\text{final}} \ge 0.60$.
-- `UNVERIFIED_SUSPECT`: $\text{Score}_{\text{AI}} \ge 0.50$ BUT $S_{\text{acoustic}} < 0.50$ (flagged for expert review; possible flush/buried target).
-- `DISCARDED`: $\text{Confidence}_{\text{final}} < 0.35$.
+### 17.2 Evidence Rating & State Transition Logic
+- **`SUPPORTING` (Verified 3D Object):** Shadow contrast ratio $C_{\text{contrast}} \ge 0.40$ and measurable relief height $h_{\text{relief}} \ge 0.15\text{ m}$. Final confidence is boosted:
+  $$\text{Confidence}_{\text{final}} = \min(1.0, \text{Confidence}_{\text{AI}} + 0.15 \times C_{\text{contrast}})$$
+  Review status set to `VERIFIED`.
+- **`NEUTRAL` (Ambiguous Context):** Low contrast or rugged seabed makes shadow boundary indeterminate. Confidence is retained:
+  $$\text{Confidence}_{\text{final}} = \text{Confidence}_{\text{AI}}$$
+  Review status set to `UNVERIFIED`.
+- **`ABSENT` (Suspicious Flat Artifact):** High-confidence AI highlight with clear flat seabed where shadow should physically occur, but none is found. Soft penalty applied:
+  $$\text{Confidence}_{\text{final}} = \max(0.20, \text{Confidence}_{\text{AI}} \times 0.85)$$
+  Review status set to `FLAGGED_FOR_REVIEW`. Never automatically deleted or discarded.
 
 ---
 

@@ -1,0 +1,11 @@
+# AquaSentinel AI - Side-Scan Sonar Segmentation Dataset
+path: D:/Projects/AquaSentinel/data/unified_yolo_seg
+train: images/train
+val: images/val
+test: images/test
+
+names:
+  0: crab_pot
+  1: ghost_gear
+  2: mine_cylinder
+  3: debris_anomaly

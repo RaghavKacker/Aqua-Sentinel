@@ -88,12 +88,19 @@ SubPipeMiniSSS/
 AI4Shipwrecks/
 drishti-sss/
 sidescantools/
+GhostVision/
+SSS-Mine/
+NOMBO/
+data/raw/
 *.pptx
 *.pptx.pptx
 
 # Model Checkpoints & Weights
+models/
 ai/weights/
+runs/
 *.pt
 *.onnx
 *.engine
 *.tflite
+
