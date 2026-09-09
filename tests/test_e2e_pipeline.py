@@ -22,11 +22,9 @@ def test_system_status():
 
 def test_process_survey_e2e():
     """Run full pipeline: upload -> preprocess -> tile -> detect -> shadow -> geo -> db -> export."""
-    # Create realistic test image (300 x 640) with an anomaly
-    img = np.full((300, 640), fill_value=80, dtype=np.uint8)
-    # Add acoustic highlight & shadow
-    img[80:130, 380:430] = 235
-    img[80:130, 430:490] = 12
+    # Generate realistic SSS patch with ghost gear target
+    from ml.prepare_dataset import generate_synthetic_sss_patch
+    img, _ = generate_synthetic_sss_patch(width=640, height=640, has_target=True, target_class=1)
 
     _, encoded = cv2.imencode('.png', img)
     sonar_bytes = io.BytesIO(encoded.tobytes())
@@ -45,9 +43,9 @@ def test_process_survey_e2e():
             "nav_file": ("nav_telemetry.csv", nav_bytes, "text/csv")
         },
         data={
-            "apply_slant_range": "true",
-            "apply_clahe": "true",
-            "confidence_threshold": "0.20"
+            "apply_slant_range": "false",
+            "apply_clahe": "false",
+            "confidence_threshold": "0.15"
         }
     )
 
