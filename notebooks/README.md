@@ -4,7 +4,8 @@ This folder contains Google Colab-ready Jupyter Notebooks for training and evalu
 
 ## Available Notebooks
 
-### 1. `AquaSentinel_YOLO_Seg_Colab_Training.ipynb`
+### 1. `aquasentinel_training_colab.ipynb`
+* **Direct Colab Link:** [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/RaghavKacker/Aqua-Sentinel/blob/main/notebooks/aquasentinel_training_colab.ipynb)
 * **Purpose:** End-to-end training and evaluation of the **Ultralytics YOLO-Seg** model on Google Colab GPU.
 * **Key Steps:**
   1. GPU Acceleration verification (`nvidia-smi`)
