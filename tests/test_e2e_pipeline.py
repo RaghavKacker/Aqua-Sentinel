@@ -36,18 +36,32 @@ def test_process_survey_e2e():
     )
     nav_bytes = io.BytesIO(nav_csv.encode('utf-8'))
 
-    response = client.post(
-        "/api/v1/surveys/process",
-        files={
-            "sonar_file": ("test_survey_line.png", sonar_bytes, "image/png"),
-            "nav_file": ("nav_telemetry.csv", nav_bytes, "text/csv")
-        },
-        data={
-            "apply_slant_range": "false",
-            "apply_clahe": "false",
-            "confidence_threshold": "0.15"
-        }
-    )
+    # Mock inference to return a deterministic detection for testing full downstream pipeline
+    from unittest.mock import patch
+    mock_tile_detection = [{
+        "class_id": 0,
+        "class_name": "crab_pot",
+        "confidence_ai": 0.85,
+        "x_min": 150,
+        "y_min": 200,
+        "x_max": 230,
+        "y_max": 280,
+        "polygon": [150, 200, 230, 200, 230, 280, 150, 280]
+    }]
+
+    with patch.object(client.app.state.inference_engine if hasattr(client.app.state, 'inference_engine') else None or __import__('backend.main', fromlist=['inference_engine']).inference_engine, "predict_tile", return_value=mock_tile_detection):
+        response = client.post(
+            "/api/v1/surveys/process",
+            files={
+                "sonar_file": ("test_survey_line.png", sonar_bytes, "image/png"),
+                "nav_file": ("nav_telemetry.csv", nav_bytes, "text/csv")
+            },
+            data={
+                "apply_slant_range": "false",
+                "apply_clahe": "false",
+                "confidence_threshold": "0.15"
+            }
+        )
 
     assert response.status_code == 200
     data = response.json()
