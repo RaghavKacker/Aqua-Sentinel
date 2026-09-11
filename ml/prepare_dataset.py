@@ -15,12 +15,13 @@ from typing import Dict, List, Tuple, Optional
 import numpy as np
 import cv2
 
-# Unified Canonical Classes for AquaSentinel Prototype
+# Unified Canonical Classes for AquaSentinel
 CANONICAL_CLASSES = {
     0: "crab_pot",
-    1: "ghost_gear",
-    2: "mine_cylinder",
-    3: "debris_anomaly"
+    1: "submarine_pipeline",
+    2: "shipwreck",
+    3: "ghost_net",
+    4: "mine_cylinder"
 }
 
 CLASS_NAME_TO_ID = {v: k for k, v in CANONICAL_CLASSES.items()}

@@ -1,8 +1,7 @@
 """
 AquaSentinel AI - Model Evaluation & Benchmark Script
-Evaluates YOLO-Seg models on unseen SSS test sets and compares:
-1. Pure YOLO-Seg detection
-2. YOLO-Seg + Acoustic Shadow Verification
+Evaluates YOLO detection & segmentation models on unseen SSS test sets across
+the 5 canonical hydrographic classes (4 production + 1 distractor).
 """
 
 import os
@@ -11,6 +10,15 @@ import time
 import argparse
 from pathlib import Path
 from typing import Dict, Any
+
+CLASS_NAMES = {
+    0: "crab_pot (distractor)",
+    1: "submarine_pipeline",
+    2: "shipwreck",
+    3: "ghost_net",
+    4: "mine_cylinder"
+}
+
 
 def evaluate_model(
     model_path: str = "./models/best.pt",
@@ -30,14 +38,15 @@ def evaluate_model(
         model_path = "yolo11n-seg.pt"
 
     model = YOLO(model_path)
+    task_type = getattr(model, "task", "detect")
     model_size_mb = model_file.stat().st_size / (1024 * 1024) if model_file.exists() else 0.0
 
-    print("=" * 60)
-    print("AquaSentinel AI - Model Evaluation & Benchmarking")
-    print(f"Model Path:  {model_path} ({model_size_mb:.2f} MB)")
-    print(f"Dataset:     {data_yaml}")
-    print(f"Resolution:  {imgsz}x{imgsz}")
-    print("=" * 60)
+    print("=" * 65)
+    print("AquaSentinel AI - Hydrographic Sonar Model Evaluation")
+    print(f"Model Path:     {model_path} ({model_size_mb:.2f} MB, task: {task_type})")
+    print(f"Dataset Config: {data_yaml}")
+    print(f"Resolution:     {imgsz}x{imgsz}")
+    print("=" * 65)
 
     # 1. Run Ultralytics Validation
     start_time = time.time()
@@ -50,30 +59,41 @@ def evaluate_model(
     )
     val_time = time.time() - start_time
 
-    # 2. Extract metrics
-    box_map50 = getattr(metrics.box, "map50", 0.0)
-    box_map = getattr(metrics.box, "map", 0.0)
-    seg_map50 = getattr(metrics.seg, "map50", 0.0) if hasattr(metrics, "seg") else 0.0
-    seg_map = getattr(metrics.seg, "map", 0.0) if hasattr(metrics, "seg") else 0.0
-    speed_ms = metrics.speed.get("inference", 0.0)
+    # 2. Extract bounding-box metrics
+    box_map50 = getattr(metrics.box, "map50", 0.0) if hasattr(metrics, "box") else 0.0
+    box_map = getattr(metrics.box, "map", 0.0) if hasattr(metrics, "box") else 0.0
+    speed_ms = metrics.speed.get("inference", 0.0) if hasattr(metrics, "speed") else 0.0
 
     report = {
         "model_path": str(model_path),
+        "task": task_type,
         "model_size_mb": round(model_size_mb, 2),
         "inference_latency_ms": round(speed_ms, 2),
         "box_mAP50": round(float(box_map50), 4),
         "box_mAP50_95": round(float(box_map), 4),
-        "seg_mAP50": round(float(seg_map50), 4),
-        "seg_mAP50_95": round(float(seg_map), 4)
     }
 
-    print("\n--- Evaluation Summary ---")
+    # Extract segmentation metrics if applicable
+    if hasattr(metrics, "seg") and metrics.seg is not None:
+        report["seg_mAP50"] = round(float(getattr(metrics.seg, "map50", 0.0)), 4)
+        report["seg_mAP50_95"] = round(float(getattr(metrics.seg, "map", 0.0)), 4)
+
+    print("\n--- Benchmark Performance Summary ---")
     for k, v in report.items():
         print(f"  {k:24s}: {v}")
 
-    print("\n--- Comparative Verification: YOLO only vs YOLO + Acoustic Gate ---")
-    print("  [Note: Acoustic verification filters flat-seabed false positives while preserving 3D debris]")
-    print("  Verification Rule: Detections with supporting shadows are verified; ambiguous ones are flagged, not discarded.")
+    # Per-Class Precision & Recall Breakdown
+    if hasattr(metrics, "box") and hasattr(metrics.box, "maps"):
+        print("\n--- Per-Class Hydrographic Performance Breakdown ---")
+        for cls_id, cls_label in CLASS_NAMES.items():
+            if cls_id < len(metrics.box.maps):
+                map_val = metrics.box.maps[cls_id]
+                print(f"  Class {cls_id} ({cls_label:24s}): mAP50-95 = {map_val:.4f}")
+
+    print("\n--- Operational Summary ---")
+    print("  Production Classes: submarine_pipeline, shipwreck, ghost_net, mine_cylinder")
+    print("  Distractor Class:   crab_pot (suppressed in mission dashboard)")
+    print("  Acoustic Physics:   Verified via down-range acoustic shadow contrast gate.")
 
     return report
 

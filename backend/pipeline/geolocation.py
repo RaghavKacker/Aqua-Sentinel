@@ -11,12 +11,11 @@ WGS84_EARTH_RADIUS_M = 6378137.0
 
 # Base class hazard points [0 - 50]
 CLASS_RISK_POINTS = {
-    "mine_cylinder": 50,
-    "ghost_gear": 45,
-    "crab_pot": 35,
-    "debris_anomaly": 25,
-    "submarine_pipeline": 40,
-    "shipwreck": 30
+    "mine_cylinder": 50,       # Critical ordnance / safety hazard
+    "submarine_pipeline": 45,  # High-priority subsea infrastructure
+    "ghost_net": 40,           # Ecological threat / propeller fouling
+    "shipwreck": 30,           # Navigational hazard / anomaly
+    "crab_pot": 10             # Distractor / minor seabed object
 }
 
 def project_detection_geolocation(

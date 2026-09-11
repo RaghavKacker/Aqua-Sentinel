@@ -39,8 +39,8 @@ def test_process_survey_e2e():
     # Mock inference to return a deterministic detection for testing full downstream pipeline
     from unittest.mock import patch
     mock_tile_detection = [{
-        "class_id": 0,
-        "class_name": "crab_pot",
+        "class_id": 1,
+        "class_name": "submarine_pipeline",
         "confidence_ai": 0.85,
         "x_min": 150,
         "y_min": 200,

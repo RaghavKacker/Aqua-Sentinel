@@ -54,7 +54,7 @@ def test_shadow_verification_never_discards_when_absent():
         "x_max": 400,
         "y_max": 150,
         "confidence_ai": 0.75,
-        "class_name": "debris_anomaly"
+        "class_name": "ghost_net"
     }
 
     result = verify_acoustic_shadow(
