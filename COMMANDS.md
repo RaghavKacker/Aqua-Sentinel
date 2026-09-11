@@ -72,10 +72,11 @@ Runs detection/segmentation inference across test sonar patches and outputs imag
 .\venv\Scripts\python ml/prepare_dataset.py --output ./data/unified_yolo_seg --synthetic --samples 100
 ```
 
-### Train / Fine-Tune YOLO Model Locally
+### Train / Fine-Tune YOLO Model Locally (Hardware-Aware)
 ```powershell
-.\venv\Scripts\python ml/train.py --data ./data/unified_yolo_seg/dataset.yaml --epochs 30 --batch 16 --imgsz 640
+.\venv\Scripts\python ml/train.py --data ./data/unified_yolo_seg/dataset.yaml --model ./models/best.pt --epochs 50 --batch 16 --device 0
 ```
+*(For a complete training guide and dataset rules, see [TRAINING_GUIDE.md](file:///d:/Projects/COPYPASTE/Aqua/TRAINING_GUIDE.md))*
 
 ---
 

@@ -92,6 +92,12 @@ GhostVision/
 SSS-Mine/
 NOMBO/
 data/raw/
+Training/*/
+Training/**/images/
+Training/**/labels/
+Training/ghostvision_crab_pot_yolo/
+*.zip
+*.tar.gz
 *.pptx
 *.pptx.pptx
 
